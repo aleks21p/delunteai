@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Delunte AI</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#000000;
+color:rgb(255, 255, 255);
+display:flex;
+height:100vh;
+}
+
+
+#sidebar{
+width:260px;
+background:#000000;
+border-right:1px solid #ffffff;
+padding:15px;
+}
+
+#sidebar h2{
+color:#ffffff;
+}
+
+
+#main{
+flex:1;
+display:flex;
+flex-direction:column;
+}
+
+#chat{
+flex:1;
+overflow-y:auto;
+padding:30px;
+}
+
+
+.messageRow{
+display:flex;
+margin-bottom:20px;
+}
+
+.user{
+justify-content:flex-end;
+}
+
+.ai{
+justify-content:flex-start;
+}
+
+.message{
+max-width:600px;
+padding:14px;
+border-radius:8px;
+}
+
+.user .message{
+background:#000000;
+color:#ffffff;
+}
+
+.ai .message{
+background:#000000;
+color:#ffffff;
+}
+
+
+#inputArea{
+padding:20px;
+border-top:1px solid #000000;
+display:flex;
+justify-content:center;
+}
+
+#inputBox{
+width:700px;
+display:flex;
+background:#000000;
+border-radius:10px;
+padding:10px;
+gap: 10px;
+align-items: flex-end;
+}
+
+#msg{
+flex:1;
+background:transparent;
+border:none;
+color:white;
+font-size:16px;
+outline:none;
+}
+
+#imageBtn{
+background:#ffffff;
+border:none;
+color:rgb(0, 0, 0);
+padding:10px 18px;
+border-radius:6px;
+cursor:pointer;
+font-size:14px;
+}
+
+#imageBtn:hover{
+background:#ffffff;
+}
+
+#fileBtn{
+background:#ffffff;
+border:none;
+color:rgb(0, 0, 0);
+padding:10px 18px;
+border-radius:6px;
+cursor:pointer;
+font-size:14px;
+}
+
+#fileBtn:hover{
+background:#ffffff;
+}
+
+#imageFile{
+display:none;
+}
+
+#fileInput{
+display:none;
+}
+
+#filePreviewContainer{
+max-width:100px;
+max-height:100px;
+border-radius:5px;
+margin:10px 0;
+display:none;
+}
+
+#filePreviewContainer img{
+max-width:100%;
+max-height:100%;
+border-radius:5px;
+}
+
+#filePreviewContainer .filetype{
+background:#000000;
+color:#ffffff;
+padding:10px;
+border-radius:5px;
+font-size:12px;
+text-align:center;
+}
+
+#imagePreview{
+max-width:80px;
+max-height:80px;
+border-radius:5px;
+}
+
+button{
+background:#ffffff;
+border:none;
+color:rgb(0, 0, 0);
+padding:10px 18px;
+border-radius:6px;
+cursor:pointer;
+}
+
+button:hover{
+background:#ffffff;
+}
+
+@keyframes twinkle {
+0%, 100% { opacity: 0.3; }
+50% { opacity: 1; }
+}
+
+#starfield {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+pointer-events: none;
+z-index: 0;
+}
+
+.star {
+position: absolute;
+width: 2px;
+height: 2px;
+background: white;
+border-radius: 50%;
+animation: twinkle infinite;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="starfield"></div>
+
+<div id="sidebar">
+<h2>Delunte AI</h2>
+<p>IN BETA DO NOT REPOST</p>
+</div>
+
+<div id="main">
+
+<div id="chat"></div>
+
+<div id="inputArea">
+<div id="inputBox">
+<input id="msg" placeholder="Message Delunte...">
+<input id="fileInput" type="file">
+<button id="fileBtn" onclick="document.getElementById('fileInput').click()">File</button>
+<button onclick="send()">Send</button>
+</div>
+<div id="filePreviewContainer"></div>
+</div>
+
+</div>
+
+<script>
+
+let selectedFile = null
+let selectedFileName = null
+let messageHistory = []
+
+async function send(){
+
+let input=document.getElementById("msg")
+let message=input.value
+let fileToSend=selectedFile
+let fileName=selectedFileName
+
+if(message==="" && !selectedFile) return
+
+if(message){
+addMessage(message,"user")
+messageHistory.push({role: "user", content: message})
+}
+
+if(selectedFile){
+let chat=document.getElementById("chat")
+let row=document.createElement("div")
+row.classList.add("messageRow","user")
+
+if(selectedFileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)){
+let img=document.createElement("img")
+img.src=selectedFile
+img.style.maxWidth="200px"
+img.style.borderRadius="8px"
+row.appendChild(img)
+}else{
+let fileDisplay=document.createElement("div")
+fileDisplay.style.background="#333333"
+fileDisplay.style.color="#ffffff"
+fileDisplay.style.padding="10px"
+fileDisplay.style.borderRadius="8px"
+fileDisplay.style.maxWidth="200px"
+fileDisplay.textContent=selectedFileName
+row.appendChild(fileDisplay)
+}
+chat.appendChild(row)
+chat.scrollTop=chat.scrollHeight
+}
+
+input.value=""
+document.getElementById("filePreviewContainer").style.display="none"
+document.getElementById("fileInput").value=""
+
+try{
+let response=await fetch("http://localhost:5050/chat",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({message:message, file:fileToSend, fileName:fileName, history:messageHistory})
+})
+
+if(!response.ok){
+addMessage("Error: Could not reach server. Make sure webai.py is running.","ai")
+selectedFile=null
+selectedFileName=null
+return
+}
+
+let data=await response.json()
+
+addMessage(data.reply,"ai", true)
+messageHistory.push({role: "ai", content: data.reply})
+
+if(messageHistory.length > 10){
+messageHistory = messageHistory.slice(-10)
+}
+
+selectedFile=null
+selectedFileName=null
+}catch(error){
+addMessage("Error: Could not connect to server. Make sure webai.py is running on port 5050.","ai")
+selectedFile=null
+selectedFileName=null
+}
+
+}
+
+function addMessage(text,type, animate=false){
+
+let chat=document.getElementById("chat")
+
+let row=document.createElement("div")
+row.classList.add("messageRow",type)
+
+let msg=document.createElement("div")
+msg.classList.add("message")
+
+row.appendChild(msg)
+chat.appendChild(row)
+
+if(animate){
+let index=0
+function typeChar(){
+if(index<text.length){
+msg.textContent+=text[index]
+index++
+chat.scrollTop=chat.scrollHeight
+setTimeout(typeChar, 30)
+}
+}
+typeChar()
+}else{
+msg.textContent=text
+chat.scrollTop=chat.scrollHeight
+}
+
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+document.getElementById("msg").addEventListener("keypress", function(event){
+if(event.key==="Enter"){
+send()
+}
+})
+
+// Handle file selection
+document.getElementById("fileInput").addEventListener("change", function(event){
+const file = event.target.files[0]
+if(file){
+const reader = new FileReader()
+reader.onload = function(e){
+selectedFile = e.target.result
+selectedFileName = file.name
+const container = document.getElementById("filePreviewContainer")
+container.innerHTML = ""
+
+// Check if it's an image
+if(file.type.startsWith("image/")){
+const img = document.createElement("img")
+img.src = selectedFile
+container.appendChild(img)
+}else{
+const fileInfo = document.createElement("div")
+fileInfo.className = "filetype"
+fileInfo.textContent = file.name
+container.appendChild(fileInfo)
+}
+container.style.display = "block"
+}
+reader.readAsDataURL(file)
+}
+})
+
+const starfield = document.getElementById("starfield")
+const sidebarWidth = 260
+for(let i = 0; i < 100; i++){
+const star = document.createElement("div")
+star.classList.add("star")
+const randomLeft = Math.random() * (window.innerWidth - sidebarWidth) + sidebarWidth
+star.style.left = (randomLeft / window.innerWidth * 100) + "%"
+star.style.top = Math.random() * 100 + "%"
+star.style.animationDuration = (Math.random() * 3 + 2) + "s"
+star.style.animationDelay = Math.random() * 5 + "s"
+starfield.appendChild(star)
+}
+})
+
+</script>
+
+<!-- Delunte note: to run do cd ~/git/delunteai then python3 webai.py -->
+</body>
+</html>
