@@ -47,3 +47,18 @@ python webai.py
 - `.secrets.example` — example secrets template.
 
 If you want, I can also add a `requirements.txt` or a GitHub Actions secret-rotation reminder.
+## Development tooling
+
+- Install developer tools and pre-commit hooks:
+
+```bash
+python -m pip install -r requirements.txt
+pre-commit install
+```
+
+- The repo includes a `.pre-commit-config.yaml` with `detect-secrets`. After installing, run:
+
+```bash
+pre-commit run --all-files
+```
+

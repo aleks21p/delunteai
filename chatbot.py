@@ -23,6 +23,13 @@ def _load_secrets(secrets_path: str = ".secrets"):
 
 _load_secrets()
 
+# Allow optional .env fallback using python-dotenv if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise RuntimeError("TOKEN not found. Create a .secrets file with TOKEN=your_token or set the TOKEN env var.")

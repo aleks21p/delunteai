@@ -5,3 +5,6 @@ flask-cors
 Pillow
 uvicorn
 asgiref
+python-dotenv
+pre-commit
+detect-secrets
