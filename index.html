@@ -18,12 +18,89 @@ height:100vh;
 #sidebar{
 width:260px;
 background:#000000;
-border-right:1px solid #ffffff;
-padding:15px;
+border-right:1px solid #000000;
+padding:0;
+display:flex;
+flex-direction:column;
+height:100vh;
 }
 
 #sidebar h2{
 color:#ffffff;
+padding:15px;
+margin:0;
+font-size:18px;
+border-bottom:1px solid #000000;
+}
+
+#newChatBtn{
+background:#ffffff;
+border:none;
+color:rgb(0, 0, 0);
+padding:12px 15px;
+border-radius:0;
+cursor:pointer;
+font-size:14px;
+margin:10px;
+width:calc(100% - 20px);
+border-bottom:1px solid #ffffff;
+}
+
+#newChatBtn:hover{
+background:#ffffff;
+}
+
+#chatHistory{
+flex:1;
+overflow-y:auto;
+padding:10px 0;
+}
+
+.historyItem{
+padding:12px 15px;
+color:#ffffff;
+font-size:14px;
+cursor:pointer;
+border-left:3px solid transparent;
+margin:5px 0;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+display:flex;
+justify-content:space-between;
+align-items:center;
+group:hover .deleteBtn{display:block;}
+}
+
+.historyItem:hover{
+background:#000000;
+color:#ffffff;
+}
+
+.historyItem.active{
+border-left-color:#ffffff;
+color:#ffffff;
+background:#000000;
+}
+
+.deleteBtn{
+background:none;
+border:none;
+color:#ff6b6b;
+padding:0 5px;
+cursor:pointer;
+font-size:16px;
+flex-shrink:0;
+opacity:0;
+transition:opacity 0.2s;
+}
+
+.historyItem:hover .deleteBtn{
+opacity:1;
+}
+
+.deleteBtn:hover{
+color:#ff0000;
 }
 
 
@@ -31,12 +108,15 @@ color:#ffffff;
 flex:1;
 display:flex;
 flex-direction:column;
+position:relative;
 }
 
 #chat{
 flex:1;
 overflow-y:auto;
 padding:30px;
+display:flex;
+flex-direction:column;
 }
 
 
@@ -67,24 +147,37 @@ color:#ffffff;
 .ai .message{
 background:#000000;
 color:#ffffff;
-}
+white-space:pre-wrap;
+word-wrap:break-word;
+line-height:1.6;
+}}
 
 
 #inputArea{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%, -50%);
+width:600px;
 padding:20px;
-border-top:1px solid #000000;
+border:1px solid #000000;
+border-radius:8px;
+background:rgba(0,0,0,0.8);
+backdrop-filter:blur(10px);
 display:flex;
-justify-content:center;
+flex-direction:column;
+gap:12px;
+z-index:10;
 }
 
 #inputBox{
-width:700px;
 display:flex;
-background:#000000;
-border-radius:10px;
-padding:10px;
-gap: 10px;
-align-items: flex-end;
+background:transparent;
+border:1px solid #000000;
+border-radius:6px;
+padding:12px;
+gap:8px;
+align-items:flex-end;
 }
 
 #msg{
@@ -92,22 +185,10 @@ flex:1;
 background:transparent;
 border:none;
 color:white;
-font-size:16px;
-outline:none;
-}
-
-#imageBtn{
-background:#ffffff;
-border:none;
-color:rgb(0, 0, 0);
-padding:10px 18px;
-border-radius:6px;
-cursor:pointer;
 font-size:14px;
-}
-
-#imageBtn:hover{
-background:#ffffff;
+outline:none;
+padding:4px;
+min-height:24px;
 }
 
 #fileBtn{
@@ -117,15 +198,6 @@ color:rgb(0, 0, 0);
 padding:10px 18px;
 border-radius:6px;
 cursor:pointer;
-font-size:14px;
-}
-
-#fileBtn:hover{
-background:#ffffff;
-}
-
-#imageFile{
-display:none;
 }
 
 #fileInput{
@@ -153,12 +225,6 @@ padding:10px;
 border-radius:5px;
 font-size:12px;
 text-align:center;
-}
-
-#imagePreview{
-max-width:80px;
-max-height:80px;
-border-radius:5px;
 }
 
 button{
@@ -207,7 +273,8 @@ animation: twinkle infinite;
 
 <div id="sidebar">
 <h2>Delunte AI</h2>
-<p>IN BETA DO NOT REPOST</p>
+<button id="newChatBtn" onclick="newChat()">+ New Chat</button>
+<div id="chatHistory"></div>
 </div>
 
 <div id="main">
@@ -221,7 +288,6 @@ animation: twinkle infinite;
 <button id="fileBtn" onclick="document.getElementById('fileInput').click()">File</button>
 <button onclick="send()">Send</button>
 </div>
-<div id="filePreviewContainer"></div>
 </div>
 
 </div>
@@ -231,6 +297,92 @@ animation: twinkle infinite;
 let selectedFile = null
 let selectedFileName = null
 let messageHistory = []
+let conversations = []
+let currentConversationId = null
+
+function newChat(){
+currentConversationId = null
+messageHistory = []
+selectedFile = null
+selectedFileName = null
+document.getElementById("chat").innerHTML = ""
+document.getElementById("msg").value = ""
+document.getElementById("filePreviewContainer").style.display = "none"
+renderHistory()
+}
+
+function saveConversation(){
+if(messageHistory.length === 0) return
+if(!currentConversationId){
+currentConversationId = Date.now()
+}
+let title = messageHistory.find(m => m.role === "user")?.content || "New Chat"
+if(title.length > 50) title = title.substring(0, 50) + "..."
+let existing = conversations.findIndex(c => c.id === currentConversationId)
+if(existing >= 0){
+conversations[existing] = {id: currentConversationId, title: title, messages: [...messageHistory]}
+}else{
+conversations.unshift({id: currentConversationId, title: title, messages: [...messageHistory]})
+}
+localStorage.setItem("conversations", JSON.stringify(conversations))
+renderHistory()
+}
+
+function loadConversation(id){
+let conv = conversations.find(c => c.id === id)
+if(conv){
+currentConversationId = id
+messageHistory = [...conv.messages]
+document.getElementById("chat").innerHTML = ""
+messageHistory.forEach(msg => {
+addMessage(msg.content, msg.role, false)
+})
+document.getElementById("msg").value = ""
+document.getElementById("filePreviewContainer").style.display = "none"
+renderHistory()
+}
+}
+
+function renderHistory(){
+let historyDiv = document.getElementById("chatHistory")
+historyDiv.innerHTML = ""
+conversations.forEach(conv => {
+let item = document.createElement("div")
+item.className = "historyItem"
+if(conv.id === currentConversationId) item.classList.add("active")
+
+let titleSpan = document.createElement("span")
+titleSpan.textContent = conv.title
+titleSpan.style.flex = "1"
+titleSpan.style.minWidth = "0"
+titleSpan.onclick = (e) => {
+e.stopPropagation()
+loadConversation(conv.id)
+}
+
+let deleteBtn = document.createElement("button")
+deleteBtn.className = "deleteBtn"
+deleteBtn.textContent = "×"
+deleteBtn.onclick = (e) => {
+e.stopPropagation()
+deleteConversation(conv.id)
+}
+
+item.appendChild(titleSpan)
+item.appendChild(deleteBtn)
+historyDiv.appendChild(item)
+})
+}
+
+function deleteConversation(id){
+conversations = conversations.filter(c => c.id !== id)
+localStorage.setItem("conversations", JSON.stringify(conversations))
+if(currentConversationId === id){
+newChat()
+}else{
+renderHistory()
+}
+}
 
 async function send(){
 
@@ -275,6 +427,27 @@ input.value=""
 document.getElementById("filePreviewContainer").style.display="none"
 document.getElementById("fileInput").value=""
 
+
+let chat=document.getElementById("chat")
+let thinkingRow=document.createElement("div")
+thinkingRow.classList.add("messageRow","ai")
+let thinkingMsg=document.createElement("div")
+thinkingMsg.classList.add("message")
+thinkingMsg.id="thinkingMessage"
+thinkingMsg.style.fontSize="36px"
+thinkingMsg.style.padding="8px 12px"
+thinkingRow.appendChild(thinkingMsg)
+chat.appendChild(thinkingRow)
+
+const dotPattern = ["", ".", "..", "..."]
+let dotIndex = 0
+
+const thinkingInterval = setInterval(() => {
+  thinkingMsg.textContent = dotPattern[dotIndex]
+  dotIndex = (dotIndex + 1) % dotPattern.length
+  chat.scrollTop=chat.scrollHeight
+}, 400)
+
 try{
 let response=await fetch("http://localhost:5050/chat",{
 method:"POST",
@@ -284,7 +457,12 @@ headers:{
 body:JSON.stringify({message:message, file:fileToSend, fileName:fileName, history:messageHistory})
 })
 
+clearInterval(thinkingInterval)
+thinkingRow.remove()
+
 if(!response.ok){
+clearInterval(thinkingInterval)
+thinkingRow.remove()
 addMessage("Error: Could not reach server. Make sure webai.py is running.","ai")
 selectedFile=null
 selectedFileName=null
@@ -293,6 +471,7 @@ return
 
 let data=await response.json()
 
+thinkingRow.remove()
 addMessage(data.reply,"ai", true)
 messageHistory.push({role: "ai", content: data.reply})
 
@@ -303,10 +482,14 @@ messageHistory = messageHistory.slice(-10)
 selectedFile=null
 selectedFileName=null
 }catch(error){
+clearInterval(thinkingInterval)
+thinkingRow.remove()
 addMessage("Error: Could not connect to server. Make sure webai.py is running on port 5050.","ai")
 selectedFile=null
 selectedFileName=null
 }
+
+saveConversation()
 
 }
 
@@ -327,7 +510,12 @@ if(animate){
 let index=0
 function typeChar(){
 if(index<text.length){
-msg.textContent+=text[index]
+let char = text[index]
+if(char === "\n"){
+msg.innerHTML += "<br>"
+}else{
+msg.textContent += char
+}
 index++
 chat.scrollTop=chat.scrollHeight
 setTimeout(typeChar, 30)
@@ -335,20 +523,30 @@ setTimeout(typeChar, 30)
 }
 typeChar()
 }else{
-msg.textContent=text
+if(type === "ai"){
+msg.innerHTML = text.replace(/\n/g, "<br>")
+}else{
+msg.textContent = text
+}
 chat.scrollTop=chat.scrollHeight
 }
 
 }
 
 document.addEventListener("DOMContentLoaded", function(){
+let saved = localStorage.getItem("conversations")
+if(saved){
+conversations = JSON.parse(saved)
+renderHistory()
+}
+
 document.getElementById("msg").addEventListener("keypress", function(event){
 if(event.key==="Enter"){
 send()
 }
 })
 
-// Handle file selection
+
 document.getElementById("fileInput").addEventListener("change", function(event){
 const file = event.target.files[0]
 if(file){
@@ -359,7 +557,6 @@ selectedFileName = file.name
 const container = document.getElementById("filePreviewContainer")
 container.innerHTML = ""
 
-// Check if it's an image
 if(file.type.startsWith("image/")){
 const img = document.createElement("img")
 img.src = selectedFile
@@ -377,7 +574,7 @@ reader.readAsDataURL(file)
 })
 
 const starfield = document.getElementById("starfield")
-const sidebarWidth = 260
+const sidebarWidth = 290
 for(let i = 0; i < 100; i++){
 const star = document.createElement("div")
 star.classList.add("star")
