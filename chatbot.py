@@ -2,7 +2,30 @@ import discord
 from discord.ext import commands
 import ollama
 
-TOKEN = "[REDACTED_TOKEN]"
+import os
+from pathlib import Path
+
+
+def _load_secrets(secrets_path: str = ".secrets"):
+    p = Path(secrets_path)
+    if not p.exists():
+        return
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
+        else:
+            os.environ.setdefault("TOKEN", line)
+
+
+_load_secrets()
+
+TOKEN = os.environ.get("TOKEN")
+if not TOKEN:
+    raise RuntimeError("TOKEN not found. Create a .secrets file with TOKEN=your_token or set the TOKEN env var.")
 
 intents = discord.Intents.default()
 intents.message_content = True
