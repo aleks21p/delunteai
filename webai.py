@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file, make_response
 from flask_cors import CORS
 import ollama
 import base64
@@ -11,6 +11,19 @@ from asgiref.wsgi import WsgiToAsgi
 app = Flask(__name__)
 CORS(app)
 
+
+@app.route("/", methods=["GET"])
+def index():
+    # Serve repository index.html if available, otherwise return a brief message
+    try:
+        from pathlib import Path
+        p = Path("index.html")
+        if p.exists():
+            return send_file(str(p), mimetype="text/html")
+    except Exception:
+        pass
+    return make_response(jsonify({"info": "DelunteAI web API. POST to /chat with JSON {'message': '...'}"}), 200)
+
 system_prompt = "respond in between 1-50 words"
 
 @app.route("/chat", methods=["POST"])
@@ -20,26 +33,26 @@ def chat():
     file_data = data.get("file")
     file_name = data.get("fileName", "")
     history = data.get("history", [])
-    
+
     messages = []
-    
+
     for hist_msg in history:
         if hist_msg.get("role") == "user":
             messages.append({"role": "user", "content": hist_msg.get("content", "")})
         elif hist_msg.get("role") == "ai":
             messages.append({"role": "assistant", "content": hist_msg.get("content", "")})
-    
+
     if file_data:
-        
+
         if file_data.startswith("data:"):
             file_data = file_data.split(",")[1]
-        
-       
+
+
         file_bytes = base64.b64decode(file_data)
-        
+
         if file_name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')):
             prompt = user_message if user_message else "What is in this image?"
-            
+
             response = ollama.chat(
                 model="llava",
                 messages=[
@@ -56,16 +69,16 @@ def chat():
                 prompt = f"Here's a file ({file_name}):\n\n{file_content}\n\n{user_message}" if user_message else f"Analyze this file ({file_name}):\n\n{file_content}"
             except:
                 prompt = f"User uploaded file: {file_name}. {user_message}" if user_message else f"User uploaded: {file_name}"
-            
+
             messages.append({"role": "user", "content": prompt})
-            
+
             response = ollama.chat(
                 model="llama3",
                 messages=messages
             )
     else:
         messages.append({"role": "user", "content": user_message})
-        
+
         response = ollama.chat(
             model="llama3",
             messages=[
