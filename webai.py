@@ -5,6 +5,9 @@ import base64
 import io
 from PIL import Image
 
+# ASGI adapter import (so we can run Flask under Uvicorn)
+from asgiref.wsgi import WsgiToAsgi
+
 app = Flask(__name__)
 CORS(app)
 
@@ -72,4 +75,9 @@ def chat():
 
     return jsonify({"reply": response["message"]["content"]})
 
-app.run(port=5050)
+asgi_app = WsgiToAsgi(app)
+
+if __name__ == "__main__":
+    # Run under Uvicorn when executed directly
+    import uvicorn
+    uvicorn.run(asgi_app, host="0.0.0.0", port=5050)

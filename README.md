@@ -20,8 +20,20 @@ python -m pip install -r requirements.txt
 
 ## Run
 
+- Run the Discord bot:
+
 ```bash
 python chatbot.py
+```
+
+- Run the web API under Uvicorn (recommended):
+
+```bash
+# using the module's ASGI app
+uvicorn webai:asgi_app --host 0.0.0.0 --port 5050
+
+# or run directly (this will start uvicorn)
+python webai.py
 ```
 
 ## Secrets and security

@@ -3,3 +3,5 @@ ollama
 Flask
 flask-cors
 Pillow
+uvicorn
+asgiref
