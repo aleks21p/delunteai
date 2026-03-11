@@ -18,7 +18,7 @@ height:100vh;
 #sidebar{
 width:260px;
 background:#000000;
-border-right:1px solid #000000;
+border-right:1px solid #ffffff;
 padding:0;
 display:flex;
 flex-direction:column;
@@ -150,30 +150,27 @@ color:#ffffff;
 white-space:pre-wrap;
 word-wrap:break-word;
 line-height:1.6;
-}}
+}
+
 
 
 #inputArea{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%, -50%);
-width:600px;
-padding:20px;
-border:1px solid #000000;
-border-radius:8px;
-background:rgba(0,0,0,0.8);
-backdrop-filter:blur(10px);
+margin-top:auto;
+width:100%;
+max-width:760px;
+padding:14px;
+border-top:1px solid #1a1a1a;
+background:rgba(0,0,0,0.92);
 display:flex;
 flex-direction:column;
-gap:12px;
-z-index:10;
+gap:10px;
+align-self:center;
 }
 
 #inputBox{
 display:flex;
 background:transparent;
-border:1px solid #000000;
+border:1px solid #2a2a2a;
 border-radius:6px;
 padding:12px;
 gap:8px;
@@ -288,6 +285,7 @@ animation: twinkle infinite;
 <button id="fileBtn" onclick="document.getElementById('fileInput').click()">File</button>
 <button onclick="send()">Send</button>
 </div>
+<div id="filePreviewContainer"></div>
 </div>
 
 </div>
@@ -299,6 +297,7 @@ let selectedFileName = null
 let messageHistory = []
 let conversations = []
 let currentConversationId = null
+const chatApiUrl = window.location.protocol === "file:" ? "http://localhost:5050/chat" : "/chat"
 
 function newChat(){
 currentConversationId = null
@@ -307,8 +306,16 @@ selectedFile = null
 selectedFileName = null
 document.getElementById("chat").innerHTML = ""
 document.getElementById("msg").value = ""
-document.getElementById("filePreviewContainer").style.display = "none"
+hideFilePreview()
 renderHistory()
+}
+
+function hideFilePreview(){
+const preview = document.getElementById("filePreviewContainer")
+if(preview){
+preview.style.display = "none"
+preview.innerHTML = ""
+}
 }
 
 function saveConversation(){
@@ -338,7 +345,7 @@ messageHistory.forEach(msg => {
 addMessage(msg.content, msg.role, false)
 })
 document.getElementById("msg").value = ""
-document.getElementById("filePreviewContainer").style.display = "none"
+hideFilePreview()
 renderHistory()
 }
 }
@@ -424,7 +431,7 @@ chat.scrollTop=chat.scrollHeight
 }
 
 input.value=""
-document.getElementById("filePreviewContainer").style.display="none"
+hideFilePreview()
 document.getElementById("fileInput").value=""
 
 
@@ -449,7 +456,7 @@ const thinkingInterval = setInterval(() => {
 }, 400)
 
 try{
-let response=await fetch("http://localhost:5050/chat",{
+let response=await fetch(chatApiUrl,{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
@@ -555,6 +562,7 @@ reader.onload = function(e){
 selectedFile = e.target.result
 selectedFileName = file.name
 const container = document.getElementById("filePreviewContainer")
+if(!container) return
 container.innerHTML = ""
 
 if(file.type.startsWith("image/")){
