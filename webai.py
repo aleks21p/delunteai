@@ -20,7 +20,7 @@ def index():
         pass
     return make_response(jsonify({"info": "DelunteAI web API. POST to /chat with JSON {'message': '...'}"}), 200)
 
-system_prompt = "respond in between 1-50 words"
+system_prompt = "respond in between 1-50 words your creator is aleks p if someone asks"
 
 @app.route("/chat", methods=["POST"])
 def chat():
